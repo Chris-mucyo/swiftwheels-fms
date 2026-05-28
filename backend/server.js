@@ -23,6 +23,7 @@ app.use('/api/drivers', require('./routes/drivers'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/fuel', require('./routes/fuel'));
 app.use('/api/maintenance', require('./routes/maintenance'));
+app.use('/api/reports', require('./routes/reports'));
 
 // Health check route
 app.get('/', (req, res) => {
