@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const tripSchema = new mongoose.Schema({
     tripNumber: {
         type: String,
-        unique: true
+        unique: true,
+        sparse: true // Allow null values temporarily
     },
     vehicle: {
         type: mongoose.Schema.Types.ObjectId,
@@ -73,11 +74,28 @@ const tripSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Generate trip number before saving
+// Generate unique trip number before saving
 tripSchema.pre('save', async function(next) {
-    if (!this.tripNumber) {
-        const count = await mongoose.model('Trip').countDocuments();
-        this.tripNumber = `TRIP-${String(count + 1).padStart(6, '0')}`;
+    if (this.isNew && !this.tripNumber) {
+        try {
+            // Find the last trip to get the latest number
+            const lastTrip = await mongoose.model('Trip')
+                .findOne({})
+                .sort({ createdAt: -1 })
+                .select('tripNumber');
+
+            let nextNumber = 1;
+            if (lastTrip && lastTrip.tripNumber) {
+                const lastNum = parseInt(lastTrip.tripNumber.split('-')[1]);
+                nextNumber = lastNum + 1;
+            }
+
+            this.tripNumber = `TRIP-${String(nextNumber).padStart(6, '0')}`;
+        } catch (error) {
+            // If error, use timestamp-based number
+            const timestamp = Date.now().toString().slice(-6);
+            this.tripNumber = `TRIP-${timestamp}`;
+        }
     }
     next();
 });

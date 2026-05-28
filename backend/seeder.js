@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const bcrypt = require('bcryptjs');
 
 dotenv.config();
 
@@ -15,18 +14,18 @@ const Maintenance = require('./models/Maintenance');
 const seedDatabase = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('Connected to MongoDB...');
+        console.log('Connected to MongoDB...\n');
 
         // Clear all collections
         await Promise.all([
-            User.deleteMany(),
-            Vehicle.deleteMany(),
-            Driver.deleteMany(),
-            Trip.deleteMany(),
-            FuelRecord.deleteMany(),
-            Maintenance.deleteMany()
+            User.deleteMany({}),
+            Vehicle.deleteMany({}),
+            Driver.deleteMany({}),
+            Trip.deleteMany({}),
+            FuelRecord.deleteMany({}),
+            Maintenance.deleteMany({})
         ]);
-        console.log('Cleared all collections');
+        console.log('✅ Cleared all collections\n');
 
         // Create users
         const users = await User.create([
@@ -71,7 +70,7 @@ const seedDatabase = async () => {
                 phone: '0788000005'
             }
         ]);
-        console.log(`Created ${users.length} users`);
+        console.log(`✅ Created ${users.length} users`);
 
         // Create vehicles
         const vehicles = await Vehicle.create([
@@ -136,12 +135,12 @@ const seedDatabase = async () => {
                 currentMileage: 120000
             }
         ]);
-        console.log(`Created ${vehicles.length} vehicles`);
+        console.log(`✅ Created ${vehicles.length} vehicles`);
 
         // Create drivers
         const drivers = await Driver.create([
             {
-                userId: users[2]._id, // Pierre
+                userId: users[2]._id,
                 licenseNumber: 'DL2024001',
                 licenseExpiry: new Date('2026-12-31'),
                 address: 'Kigali, Gasabo',
@@ -151,11 +150,10 @@ const seedDatabase = async () => {
                     name: 'Alice Uwase',
                     phone: '0788000100',
                     relationship: 'Spouse'
-                },
-                assignedVehicle: vehicles[0]._id
+                }
             },
             {
-                userId: users[3]._id, // David
+                userId: users[3]._id,
                 licenseNumber: 'DL2024002',
                 licenseExpiry: new Date('2027-06-30'),
                 address: 'Kigali, Nyarugenge',
@@ -165,11 +163,10 @@ const seedDatabase = async () => {
                     name: 'Grace Mugisha',
                     phone: '0788000200',
                     relationship: 'Sister'
-                },
-                assignedVehicle: vehicles[1]._id
+                }
             },
             {
-                userId: users[4]._id, // Emmanuel
+                userId: users[4]._id,
                 licenseNumber: 'DL2024003',
                 licenseExpiry: new Date('2025-03-15'),
                 address: 'Kigali, Kicukiro',
@@ -179,81 +176,103 @@ const seedDatabase = async () => {
                     name: 'John Habimana',
                     phone: '0788000300',
                     relationship: 'Brother'
-                },
-                assignedVehicle: vehicles[2]._id
+                }
             }
         ]);
-        console.log(`Created ${drivers.length} drivers`);
+        console.log(`✅ Created ${drivers.length} drivers`);
 
-        // Update vehicles with assigned drivers
-        await Vehicle.findByIdAndUpdate(vehicles[0]._id, {
-            status: 'assigned',
-            assignedDriver: drivers[0]._id
-        });
-        await Vehicle.findByIdAndUpdate(vehicles[1]._id, {
-            status: 'assigned',
-            assignedDriver: drivers[1]._id
-        });
-        await Vehicle.findByIdAndUpdate(vehicles[2]._id, {
-            status: 'assigned',
-            assignedDriver: drivers[2]._id
-        });
+        // Assign vehicles to drivers one by one
+        await Driver.findByIdAndUpdate(drivers[0]._id, { assignedVehicle: vehicles[0]._id });
+        await Vehicle.findByIdAndUpdate(vehicles[0]._id, { status: 'assigned', assignedDriver: drivers[0]._id });
 
-        // Create trips
-        const trips = await Trip.create([
-            {
-                vehicle: vehicles[0]._id,
-                driver: drivers[0]._id,
-                tripType: 'goods_transport',
-                startLocation: 'Kigali',
-                destination: 'Musanze',
-                startDate: new Date('2026-05-20'),
-                endDate: new Date('2026-05-20'),
-                startMileage: 14000,
-                endMileage: 14200,
-                distance: 200,
-                status: 'completed',
-                expenses: [
-                    { type: 'fuel', amount: 50000, description: 'Diesel refill', date: new Date('2026-05-20') },
-                    { type: 'toll', amount: 2000, description: 'Toll gate', date: new Date('2026-05-20') }
-                ],
-                totalExpenses: 52000
-            },
-            {
-                vehicle: vehicles[1]._id,
-                driver: drivers[1]._id,
-                tripType: 'passenger_transport',
-                startLocation: 'Kigali',
-                destination: 'Huye',
-                startDate: new Date('2026-05-25'),
-                startMileage: 44000,
-                status: 'in_progress',
-                expenses: [
-                    { type: 'fuel', amount: 35000, description: 'Diesel refill', date: new Date('2026-05-25') }
-                ],
-                totalExpenses: 35000
-            },
-            {
-                vehicle: vehicles[2]._id,
-                driver: drivers[2]._id,
-                tripType: 'delivery',
-                startLocation: 'Kigali',
-                destination: 'Rubavu',
-                startDate: new Date('2026-05-28'),
-                startMileage: 7500,
-                status: 'scheduled'
-            }
-        ]);
-        console.log(`Created ${trips.length} trips`);
+        await Driver.findByIdAndUpdate(drivers[1]._id, { assignedVehicle: vehicles[1]._id });
+        await Vehicle.findByIdAndUpdate(vehicles[1]._id, { status: 'assigned', assignedDriver: drivers[1]._id });
 
-        // Create fuel records
-        const fuelRecords = await FuelRecord.create([
+        await Driver.findByIdAndUpdate(drivers[2]._id, { assignedVehicle: vehicles[2]._id });
+        await Vehicle.findByIdAndUpdate(vehicles[2]._id, { status: 'assigned', assignedDriver: drivers[2]._id });
+
+        console.log('✅ Vehicles assigned to drivers');
+
+        // Create trips one at a time to avoid duplicate tripNumber
+        const trip1 = await Trip.create({
+            vehicle: vehicles[0]._id,
+            driver: drivers[0]._id,
+            tripType: 'goods_transport',
+            startLocation: 'Kigali',
+            destination: 'Musanze',
+            startDate: new Date('2026-05-20'),
+            endDate: new Date('2026-05-20'),
+            startMileage: 14000,
+            endMileage: 14200,
+            distance: 200,
+            status: 'completed',
+            expenses: [
+                { type: 'fuel', amount: 50000, description: 'Diesel refill', date: new Date('2026-05-20') },
+                { type: 'toll', amount: 2000, description: 'Toll gate', date: new Date('2026-05-20') }
+            ],
+            totalExpenses: 52000
+        });
+        console.log(`✅ Created trip: ${trip1.tripNumber}`);
+
+        const trip2 = await Trip.create({
+            vehicle: vehicles[1]._id,
+            driver: drivers[1]._id,
+            tripType: 'passenger_transport',
+            startLocation: 'Kigali',
+            destination: 'Huye',
+            startDate: new Date('2026-05-25'),
+            startMileage: 44000,
+            status: 'in_progress',
+            expenses: [
+                { type: 'fuel', amount: 35000, description: 'Diesel refill', date: new Date('2026-05-25') }
+            ],
+            totalExpenses: 35000
+        });
+        console.log(`✅ Created trip: ${trip2.tripNumber}`);
+
+        const trip3 = await Trip.create({
+            vehicle: vehicles[2]._id,
+            driver: drivers[2]._id,
+            tripType: 'delivery',
+            startLocation: 'Kigali',
+            destination: 'Rubavu',
+            startDate: new Date('2026-05-28'),
+            startMileage: 7500,
+            status: 'scheduled'
+        });
+        console.log(`✅ Created trip: ${trip3.tripNumber}`);
+
+        const trip4 = await Trip.create({
+            vehicle: vehicles[3]._id,
+            driver: drivers[0]._id,
+            tripType: 'rental',
+            startLocation: 'Kigali',
+            destination: 'Nyagatare',
+            startDate: new Date('2026-05-15'),
+            endDate: new Date('2026-05-16'),
+            startMileage: 24000,
+            endMileage: 24400,
+            distance: 400,
+            status: 'completed',
+            expenses: [
+                { type: 'fuel', amount: 60000, description: 'Petrol refill', date: new Date('2026-05-15') },
+                { type: 'parking', amount: 5000, description: 'Overnight parking', date: new Date('2026-05-16') },
+                { type: 'food', amount: 15000, description: 'Driver meals', date: new Date('2026-05-16') }
+            ],
+            totalExpenses: 80000
+        });
+        console.log(`✅ Created trip: ${trip4.tripNumber}`);
+        console.log(`✅ Created 4 trips total`);
+
+        // Create fuel records with explicit totalCost
+        const fuelData = [
             {
                 vehicle: vehicles[0]._id,
                 driver: drivers[0]._id,
                 fuelDate: new Date('2026-05-20'),
                 quantity: 50,
                 costPerLiter: 1500,
+                totalCost: 50 * 1500, // 75000
                 mileageAtRefuel: 14000,
                 fuelType: 'diesel',
                 station: 'Total Gas Station',
@@ -265,6 +284,7 @@ const seedDatabase = async () => {
                 fuelDate: new Date('2026-05-25'),
                 quantity: 35,
                 costPerLiter: 1500,
+                totalCost: 35 * 1500, // 52500
                 mileageAtRefuel: 44000,
                 fuelType: 'diesel',
                 station: 'Engen Gas Station',
@@ -276,6 +296,7 @@ const seedDatabase = async () => {
                 fuelDate: new Date('2026-05-15'),
                 quantity: 40,
                 costPerLiter: 1400,
+                totalCost: 40 * 1400, // 56000
                 mileageAtRefuel: 7000,
                 fuelType: 'petrol',
                 station: 'SP Gas Station',
@@ -283,18 +304,26 @@ const seedDatabase = async () => {
             },
             {
                 vehicle: vehicles[3]._id,
-                driver: null,
+                driver: drivers[0]._id,
                 fuelDate: new Date('2026-05-10'),
                 quantity: 45,
                 costPerLiter: 1450,
+                totalCost: 45 * 1450, // 65250
                 mileageAtRefuel: 24000,
                 fuelType: 'petrol',
                 station: 'Kobil Station',
                 receiptNumber: 'RCP004'
             }
-        ]);
-        console.log(`Created ${fuelRecords.length} fuel records`);
+        ];
 
+// Create fuel records one by one to ensure hooks run properly
+        const fuelRecords = [];
+        for (const fuelDataItem of fuelData) {
+            const record = await FuelRecord.create(fuelDataItem);
+            fuelRecords.push(record);
+            console.log(`✅ Created fuel record: ${record.receiptNumber} - RWF ${record.totalCost}`);
+        }
+        console.log(`✅ Created ${fuelRecords.length} fuel records total`);
         // Create maintenance records
         const maintenanceRecords = await Maintenance.create([
             {
@@ -332,19 +361,36 @@ const seedDatabase = async () => {
                 priority: 'low'
             }
         ]);
-        console.log(`Created ${maintenanceRecords.length} maintenance records`);
+        console.log(`✅ Created ${maintenanceRecords.length} maintenance records`);
 
-        console.log('\n✅ Database seeded successfully!');
-        console.log('\n📋 Demo Credentials:');
-        console.log('Admin: admin@swiftwheels.com / admin123');
-        console.log('Manager: manager@swiftwheels.com / manager123');
-        console.log('Driver: pierre@swiftwheels.com / driver123');
+        console.log('\n🎉 Database seeded successfully!');
+        console.log('\n📋 Demo Login Credentials:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Administrator:');
+        console.log('  Email: admin@swiftwheels.com');
+        console.log('  Password: admin123');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Fleet Manager:');
+        console.log('  Email: manager@swiftwheels.com');
+        console.log('  Password: manager123');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Driver:');
+        console.log('  Email: pierre@swiftwheels.com');
+        console.log('  Password: driver123');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         process.exit(0);
     } catch (error) {
-        console.error('Error seeding database:', error);
+        console.error('\n❌ Error seeding database:', error.message);
+        console.error('\nStack trace:', error.stack);
         process.exit(1);
     }
 };
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+    process.exit(1);
+});
 
 seedDatabase();
