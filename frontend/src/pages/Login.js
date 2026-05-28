@@ -80,13 +80,6 @@ const Login = () => {
                         Register here
                     </Link>
                 </p>
-
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-2">Demo Credentials:</p>
-                    <p className="text-xs text-gray-500">Admin: admin@swiftwheels.com / admin123</p>
-                    <p className="text-xs text-gray-500">Manager: manager@swiftwheels.com / manager123</p>
-                    <p className="text-xs text-gray-500">Driver: driver@swiftwheels.com / driver123</p>
-                </div>
             </div>
         </div>
     );
